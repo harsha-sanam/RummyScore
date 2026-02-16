@@ -208,10 +208,11 @@ export function generateId(): string {
  * 
  * @example
  * calculateDropPoints(101)  // Returns 20 (10% = 10.1, but min is 20)
- * calculateDropPoints(201)  // Returns 21 (10% = 20.1, rounded up)
+ * calculateDropPoints(201)  // Returns 20 (10% = 20.1, rounded down)
+ * calculateDropPoints(251)  // Returns 25 (10% = 25.1, rounded down)
  * calculateDropPoints(500)  // Returns 50 (10% = 50)
  */
 export function calculateDropPoints(maxPoints: number): number {
-  const tenPercent = Math.ceil(maxPoints * 0.1);
+  const tenPercent = Math.floor(maxPoints * 0.1);
   return Math.max(20, tenPercent);
 }
