@@ -20,12 +20,17 @@
  * When user drags columns, it changes the actual seating arrangement.
  */
 
-import { Component, inject, signal, EventEmitter, Output, ElementRef, ViewChild, AfterViewChecked } from '@angular/core';
+import { Component, inject, signal, EventEmitter, Output, ElementRef, ViewChild, AfterViewChecked, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { CdkDragDrop, DragDropModule, moveItemInArray } from '@angular/cdk/drag-drop';
 import { GameService } from '../../services/game.service';
-import { PlayerWithTotal } from '../../models/game.model';
+import { PlayerWithTotal, RoundScore } from '../../models/game.model';
+
+interface ScoreEntry {
+  playerId: string;
+  score: string;
+}
 
 @Component({
   selector: 'app-score-table',
@@ -43,22 +48,14 @@ import { PlayerWithTotal } from '../../models/game.model';
         </div>
       } @else {
         
-        <!-- Scrollable table wrapper with fixed max height -->
+        <!-- Main table with header, history, and input row -->
         <div class="table-wrapper" #tableWrapper>
           <table class="score-table">
             
-            <!-- 
-              TABLE HEADER (STICKY)
-              Shows player names WITH TOTALS: "Name (Total)"
-              Uses Angular CDK drag-drop for reordering
-            -->
+            <!-- TABLE HEADER - Player names with totals -->
             <thead>
               <tr class="header-row">
-                
-                <!-- Fixed "Round" column -->
-                <th class="round-col">Round</th>
-                
-                <!-- Draggable player columns container -->
+                <th class="round-col"></th>
                 <th class="players-header-cell" [attr.colspan]="gameService.activePlayersWithTotals().length">
                   <div 
                     class="players-drop-zone"
@@ -73,7 +70,6 @@ import { PlayerWithTotal } from '../../models/game.model';
                         [class.cannot-drop]="!player.canDrop"
                         [attr.data-index]="i">
                         
-                        <!-- Player header with drag handle -->
                         <div class="player-header" cdkDragHandle>
                           <span class="drag-handle">⋮⋮</span>
                           <div class="player-info">
@@ -87,7 +83,6 @@ import { PlayerWithTotal } from '../../models/game.model';
                           </div>
                         </div>
                         
-                        <!-- Placeholder shown while dragging -->
                         <div *cdkDragPlaceholder class="drag-placeholder"></div>
                       </div>
                     }
@@ -96,18 +91,33 @@ import { PlayerWithTotal } from '../../models/game.model';
               </tr>
             </thead>
             
-            <!-- 
-              TABLE BODY
-              Each row is a round with scores for each player
-              Only the MOST RECENT round is editable
-            -->
+            <!-- TABLE BODY - Score input row + history rows -->
             <tbody>
+              <!-- SCORE INPUT ROW - Always at top -->
+              @if (!gameService.isGameOver()) {
+                <tr class="input-row">
+                  <td class="round-col"></td>
+                  <td class="scores-cell" [attr.colspan]="gameService.activePlayersWithTotals().length">
+                    <div class="scores-row">
+                      @for (player of gameService.activePlayersWithTotals(); track player.id; let i = $index) {
+                        <div class="score-input-cell">
+                          <input 
+                            type="text"
+                            class="score-entry-input"
+                            [(ngModel)]="scoreEntries()[i].score"
+                            placeholder=""
+                            (keyup.enter)="submitScores()">
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+
+              <!-- HISTORY ROWS - Previous rounds -->
               @for (round of gameService.rounds(); track round.id) {
                 <tr class="score-row" [class.editable]="isEditableRound(round.id)">
-                  <!-- Round number -->
                   <td class="round-col">{{ round.id }}</td>
-                  
-                  <!-- Score cells container - matches header structure -->
                   <td class="scores-cell" [attr.colspan]="gameService.activePlayersWithTotals().length">
                     <div class="scores-row">
                       @for (player of gameService.activePlayersWithTotals(); track player.id) {
@@ -117,7 +127,6 @@ import { PlayerWithTotal } from '../../models/game.model';
                           [class.not-editable]="!isEditableRound(round.id)"
                           (click)="startEdit(round.id, player.id)">
                           
-                          <!-- Edit mode: show input -->
                           @if (editingCell()?.roundId === round.id && editingCell()?.playerId === player.id) {
                             <input 
                               type="number"
@@ -130,7 +139,6 @@ import { PlayerWithTotal } from '../../models/game.model';
                               min="0"
                               autofocus>
                           } @else {
-                            <!-- Display mode: show score with winner badge -->
                             <span class="score-value">
                               {{ getScore(round.id, player.id) ?? '-' }}
                               @if (round.winnerId === player.id) {
@@ -148,16 +156,20 @@ import { PlayerWithTotal } from '../../models/game.model';
           </table>
         </div>
 
-        <!-- Edit error message -->
-        @if (editError()) {
-          <div class="edit-error">{{ editError() }}</div>
+        <!-- Add Score Button -->
+        @if (!gameService.isGameOver()) {
+          <div class="add-score-section">
+            <button 
+              class="btn-add-score" 
+              (click)="submitScores()">
+              Add Score
+            </button>
+          </div>
         }
 
-        <!-- Message when no rounds played yet -->
-        @if (gameService.rounds().length === 0) {
-          <div class="no-rounds">
-            <p>No rounds played yet. Add scores below!</p>
-          </div>
+        <!-- Error message -->
+        @if (editError()) {
+          <div class="edit-error">{{ editError() }}</div>
         }
       }
     </div>
@@ -453,52 +465,155 @@ import { PlayerWithTotal } from '../../models/game.model';
       font-size: 12px;
       text-align: center;
     }
+
+    /* Score input row */
+    .input-row {
+      background: #fafafa;
+    }
+
+    .score-input-cell {
+      min-width: 90px;
+      padding: 8px;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .score-entry-input {
+      width: 80px;
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 14px;
+      text-align: center;
+    }
+
+    .score-entry-input:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    /* Add Score button section */
+    .add-score-section {
+      display: flex;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .btn-add-score {
+      padding: 10px 24px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-add-score:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    }
   `]
 })
-export class ScoreTableComponent implements AfterViewChecked {
+export class ScoreTableComponent implements OnInit, AfterViewChecked {
   
-  /**
-   * Event emitted when a score is edited.
-   * Parent component handles the actual update.
-   */
   @Output() scoreEdited = new EventEmitter<{ roundId: number; playerId: string; newScore: number }>();
+  @Output() scoresAdded = new EventEmitter<RoundScore[]>();
 
-  /** Reference to table wrapper for auto-scroll */
   @ViewChild('tableWrapper') tableWrapper!: ElementRef;
 
-  /** Inject game service for state */
   gameService = inject(GameService);
 
-  // ==========================================================================
-  // COMPONENT STATE
-  // ==========================================================================
-
-  /** 
-   * Currently editing cell (null if not editing).
-   * Stores roundId and playerId to identify the cell.
-   */
   editingCell = signal<{ roundId: number; playerId: string } | null>(null);
-
-  /** Track last round count for auto-scroll */
-  private lastRoundCount = 0;
-
-  /** Error message for invalid edit */
   editError = signal('');
+  scoreEntries = signal<ScoreEntry[]>([]);
 
-  // ==========================================================================
-  // LIFECYCLE
-  // ==========================================================================
+  private lastRoundCount = 0;
+  private lastPlayerCount = 0;
 
-  /**
-   * Auto-scroll to bottom when new rounds are added.
-   */
+  ngOnInit(): void {
+    this.initializeEntries();
+  }
+
+  ngDoCheck(): void {
+    const activePlayers = this.gameService.activePlayersWithTotals();
+    
+    if (activePlayers.length !== this.lastPlayerCount) {
+      this.initializeEntries();
+      this.lastPlayerCount = activePlayers.length;
+      return;
+    }
+    
+    // Check if order changed
+    const currentEntries = this.scoreEntries();
+    if (currentEntries.length === activePlayers.length) {
+      for (let i = 0; i < activePlayers.length; i++) {
+        if (currentEntries[i]?.playerId !== activePlayers[i].id) {
+          this.initializeEntries();
+          return;
+        }
+      }
+    }
+  }
+
   ngAfterViewChecked(): void {
     const currentRoundCount = this.gameService.rounds().length;
     if (currentRoundCount > this.lastRoundCount && this.tableWrapper) {
-      // New round added, scroll to bottom to show it
       this.tableWrapper.nativeElement.scrollTop = this.tableWrapper.nativeElement.scrollHeight;
       this.lastRoundCount = currentRoundCount;
+      // Clear entries after round is added
+      this.initializeEntries();
     }
+  }
+
+  private initializeEntries(): void {
+    const activePlayers = this.gameService.activePlayersWithTotals();
+    this.scoreEntries.set(
+      activePlayers.map(p => ({
+        playerId: p.id,
+        score: ''
+      }))
+    );
+    this.lastPlayerCount = activePlayers.length;
+  }
+
+  submitScores(): void {
+    const entries = this.scoreEntries();
+    const activePlayers = this.gameService.activePlayersWithTotals();
+    const scores: RoundScore[] = [];
+    let winnerCount = 0;
+
+    for (let i = 0; i < entries.length; i++) {
+      const value = entries[i].score.trim();
+      let score: number;
+      
+      if (value === '' || value === '0') {
+        score = 0;
+        winnerCount++;
+      } else {
+        score = parseInt(value, 10);
+        if (isNaN(score) || score < 0) {
+          this.editError.set('Please enter valid scores');
+          setTimeout(() => this.editError.set(''), 3000);
+          return;
+        }
+      }
+      
+      scores.push({ playerId: activePlayers[i].id, score });
+    }
+
+    if (winnerCount !== 1) {
+      this.editError.set('Exactly one player must have 0 score (winner)');
+      setTimeout(() => this.editError.set(''), 3000);
+      return;
+    }
+
+    this.scoresAdded.emit(scores);
+    this.initializeEntries();
   }
 
   // ==========================================================================

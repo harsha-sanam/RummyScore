@@ -31,7 +31,6 @@ import { ConfettiService } from './services/confetti.service';
 import { GameSetupModalComponent } from './components/game-setup-modal/game-setup-modal.component';
 import { PlayerPanelComponent } from './components/player-panel/player-panel.component';
 import { ScoreTableComponent } from './components/score-table/score-table.component';
-import { InlineScoreEntryComponent } from './components/inline-score-entry/inline-score-entry.component';
 import { DealerIndicatorComponent } from './components/dealer-indicator/dealer-indicator.component';
 import { RoundScore, PlayerWithTotal } from './models/game.model';
 
@@ -43,7 +42,6 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
     GameSetupModalComponent,
     PlayerPanelComponent,
     ScoreTableComponent,
-    InlineScoreEntryComponent,
     DealerIndicatorComponent
   ],
   template: `
@@ -104,22 +102,11 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
           <!-- Dealer & Open Card Indicator (ALWAYS VISIBLE) -->
           <app-dealer-indicator></app-dealer-indicator>
 
-          <!-- Score Table (SCROLLABLE with fixed height) -->
+          <!-- Score Table with integrated score entry -->
           <app-score-table 
-            (scoreEdited)="onScoreEdited($event)">
+            (scoreEdited)="onScoreEdited($event)"
+            (scoresAdded)="onScoresAdded($event)">
           </app-score-table>
-
-          <!-- 
-            INLINE SCORE ENTRY (ALWAYS VISIBLE)
-            Only shown when:
-            - At least 2 active players
-            - Game is not over
-          -->
-          @if (gameService.activePlayers().length >= 2 && !gameService.isGameOver()) {
-            <app-inline-score-entry
-              (scoresAdded)="onScoresAdded($event)">
-            </app-inline-score-entry>
-          }
 
           <!-- 
             Game Over Banner
