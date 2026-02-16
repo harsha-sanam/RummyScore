@@ -33,153 +33,56 @@ import { PlayerWithTotal } from '../../models/game.model';
   imports: [CommonModule, FormsModule, DragDropModule],
   template: `
     <div class="player-panel">
-      <h3>👥 Players</h3>
+      <h3>Players</h3>
 
-      <!-- 
-        ADD PLAYER FORM
-        Simple input + button to add new players
-        Mid-game: new players join with highest score + 1
-      -->
+      <!-- Players list - simple display -->
+      <div class="players-list">
+        @for (player of gameService.activePlayersWithTotals(); track player.id) {
+          <div class="player-row">
+            <span class="player-name">{{ player.name }}</span>
+            <button 
+              class="btn-remove"
+              (click)="confirmRemove(player.id, player.name)"
+              title="Remove player">
+              ×
+            </button>
+          </div>
+        }
+
+        @for (player of getOutPlayersWithTotals(); track player.id) {
+          <div class="player-row out">
+            <span class="player-name">{{ player.name }}</span>
+            <button 
+              class="btn-remove"
+              (click)="confirmRemove(player.id, player.name)"
+              title="Remove player">
+              ×
+            </button>
+          </div>
+        }
+      </div>
+
+      <!-- Add player form -->
       <div class="add-player">
         <input 
           type="text"
           [(ngModel)]="newPlayerName"
           (ngModelChange)="onNameInputChange()"
           (keyup.enter)="addPlayer()"
-          placeholder="Enter player name"
+          placeholder="Name"
           [class.error]="duplicateNameError()"
           maxlength="20">
         <button 
           class="btn-add"
           [disabled]="!newPlayerName.trim()"
           (click)="addPlayer()">
-          + Add
+          Add
         </button>
       </div>
       
       <!-- Duplicate name error -->
       @if (duplicateNameError()) {
         <div class="error-message">{{ duplicateNameError() }}</div>
-      }
-
-      <!-- Mid-game join info -->
-      @if (gameService.rounds().length > 0 && getJoinScore() > 0) {
-        <div class="mid-game-info">
-          ℹ️ New players join with {{ getJoinScore() }} pts
-        </div>
-      }
-
-      <!-- 
-        PLAYERS LIST
-        Shows ALL players - active players first (draggable), out players at bottom
-      -->
-      <div class="players-list">
-        <!-- Drag hint if there are active players -->
-        @if (gameService.activePlayersWithTotals().length > 1) {
-          <div class="drag-hint-bar">⋮⋮ Drag to reorder</div>
-        }
-
-        <!-- ACTIVE PLAYERS - Draggable -->
-        <div 
-          class="players-drop-zone"
-          cdkDropList
-          (cdkDropListDropped)="onPlayerDrop($event)">
-          @for (player of gameService.activePlayersWithTotals(); track player.id) {
-            <div 
-              cdkDrag
-              class="player-card"
-              [class.cannot-drop]="!player.canDrop">
-              
-              <!-- Drag handle -->
-              <div class="drag-handle" cdkDragHandle>⋮⋮</div>
-              
-              <!-- Player info: name -->
-              <div class="player-info">
-                <span class="player-name" [class.red]="!player.canDrop">
-                  {{ player.name }}
-                  @if (player.rejoinCount > 0) {
-                    <span class="rejoin-count" [title]="'Rejoined ' + player.rejoinCount + ' time(s)'">
-                      ↩️{{ player.rejoinCount }}
-                    </span>
-                  }
-                  @if (!player.canDrop) {
-                    <span class="warning-icon" [title]="getCannotDropTooltip(player)">⚠️</span>
-                  }
-                </span>
-              </div>
-              
-              <!-- Score and remove button -->
-              <div class="player-actions">
-                <span class="score">{{ player.totalScore }}</span>
-                <button 
-                  class="btn-remove"
-                  (click)="confirmRemove(player.id, player.name)"
-                  title="Remove player">
-                  ×
-                </button>
-              </div>
-              
-              <!-- Drag placeholder -->
-              <div *cdkDragPlaceholder class="player-placeholder"></div>
-            </div>
-          }
-        </div>
-
-        <!-- OUT PLAYERS - Not draggable, shown at the bottom -->
-        @for (player of getOutPlayersWithTotals(); track player.id) {
-          <div class="player-card out">
-            <!-- Spacer to align with drag handle -->
-            <div class="drag-handle-spacer"></div>
-            
-            <!-- Player info: name -->
-            <div class="player-info">
-              <span class="player-name">
-                {{ player.name }}
-                @if (player.rejoinCount > 0) {
-                  <span class="rejoin-count" [title]="'Rejoined ' + player.rejoinCount + ' time(s)'">
-                    ↩️{{ player.rejoinCount }}
-                  </span>
-                }
-              </span>
-            </div>
-            
-            <!-- OUT label with Rejoin button -->
-            <div class="player-actions">
-              <span class="out-badge">OUT</span>
-              <span class="out-score">({{ player.totalScore }})</span>
-              @if (canRejoin(player)) {
-                <button 
-                  class="btn-rejoin"
-                  (click)="confirmRejoin(player.id, player.name)"
-                  [title]="'Rejoin with ' + getRejoinScore() + ' pts'">
-                  ↩️
-                </button>
-              }
-              <button 
-                class="btn-remove"
-                (click)="confirmRemove(player.id, player.name)"
-                title="Remove player">
-                ×
-              </button>
-            </div>
-          </div>
-        }
-
-        <!-- Empty state when no players added yet -->
-        @if (gameService.players().length === 0) {
-          <div class="empty-state">
-            <p>No players yet</p>
-            <p class="hint">Add players in the order they pick cards</p>
-          </div>
-        }
-      </div>
-
-      <!-- Stats footer showing active/out counts -->
-      @if (gameService.players().length > 0) {
-        <div class="panel-stats">
-          <p>Active: {{ gameService.activePlayers().length }}</p>
-          <p>Out: {{ gameService.outPlayers().length }}</p>
-        </div>
       }
     </div>
 
@@ -225,53 +128,96 @@ import { PlayerWithTotal } from '../../models/game.model';
   styles: [`
     /* Main panel container */
     .player-panel {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
       height: fit-content;
     }
 
     h3 {
-      margin: 0 0 12px 0;
+      margin: 0 0 16px 0;
       color: #333;
-      font-size: 16px;
+      font-size: 18px;
+      font-weight: 500;
     }
 
-    /* Add player form row */
+    /* Players list */
+    .players-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    /* Player row */
+    .player-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .player-row.out {
+      opacity: 0.5;
+    }
+
+    .player-name {
+      font-size: 18px;
+      color: #333;
+    }
+
+    /* Remove button (X) */
+    .btn-remove {
+      width: 24px;
+      height: 24px;
+      border: none;
+      background: transparent;
+      color: #e53935;
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-remove:hover {
+      color: #c62828;
+    }
+
+    /* Add player form */
     .add-player {
       display: flex;
       gap: 8px;
-      margin-bottom: 8px;
     }
 
     .add-player input {
       flex: 1;
-      padding: 8px 10px;
-      border: 2px solid #e0e0e0;
-      border-radius: 6px;
-      font-size: 13px;
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      font-size: 16px;
     }
 
     .add-player input:focus {
       outline: none;
-      border-color: #667eea;
+      border-color: #4a7c59;
+    }
+
+    .add-player input.error {
+      border-color: #e53935;
     }
 
     .btn-add {
-      padding: 8px 12px;
-      background: #667eea;
+      padding: 12px 24px;
+      background: #1976d2;
       color: white;
       border: none;
-      border-radius: 6px;
-      font-weight: 600;
-      font-size: 13px;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
       cursor: pointer;
       transition: background 0.2s;
     }
 
     .btn-add:hover:not(:disabled) {
-      background: #5a6fd6;
+      background: #1565c0;
     }
 
     .btn-add:disabled {
@@ -279,270 +225,11 @@ import { PlayerWithTotal } from '../../models/game.model';
       cursor: not-allowed;
     }
 
-    /* Error state for input */
-    .add-player input.error {
-      border-color: #f44336;
-    }
-
     /* Error message */
     .error-message {
-      color: #f44336;
-      font-size: 11px;
-      margin-bottom: 8px;
-      padding: 4px 8px;
-      background: #ffebee;
-      border-radius: 4px;
-    }
-
-    /* Mid-game join info */
-    .mid-game-info {
-      background: #e3f2fd;
-      color: #1565c0;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 12px;
-      margin-bottom: 12px;
-    }
-
-    /* Scrollable list of player cards */
-    .players-list {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      max-height: 300px;
-      overflow-y: auto;
-    }
-
-    /* Drag hint bar */
-    .drag-hint-bar {
-      font-size: 10px;
-      color: #999;
-      text-align: right;
-      padding: 2px 0;
-    }
-
-    /* Players drop zone for active players */
-    .players-drop-zone {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    /* Individual player card */
-    .player-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 10px;
-      background: #f8f9fa;
-      border-radius: 6px;
-      border-left: 3px solid #4caf50;  /* Green = active */
-      transition: all 0.2s;
-      cursor: grab;
-    }
-
-    .player-card:active {
-      cursor: grabbing;
-    }
-
-    /* Drag handle */
-    .drag-handle {
-      color: #999;
-      font-size: 12px;
-      cursor: grab;
-      padding-right: 6px;
-      user-select: none;
-    }
-
-    .drag-handle:hover {
-      color: #667eea;
-    }
-
-    /* Out player styling */
-    .player-card.out {
-      border-left-color: #9e9e9e;  /* Gray = out */
-      opacity: 0.7;
-      cursor: default;
-    }
-
-    /* Cannot drop warning styling */
-    .player-card.cannot-drop {
-      border-left-color: #f44336;  /* Red = danger */
-    }
-
-    /* Drag placeholder */
-    .player-placeholder {
-      background: #e3f2fd;
-      border: 2px dashed #667eea;
-      border-radius: 6px;
-      height: 40px;
-    }
-
-    /* CDK drag styles */
-    .cdk-drag-preview {
-      background: white;
-      border-radius: 6px;
-      border-left: 3px solid #667eea;
-      padding: 8px 10px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .cdk-drag-animating {
-      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-    }
-
-    .players-drop-zone.cdk-drop-list-dragging .player-card:not(.cdk-drag-placeholder) {
-      transition: transform 250ms cubic-bezier(0, 0, 0.2, 1);
-    }
-
-    /* Spacer to align out players with active players (where drag handle would be) */
-    .drag-handle-spacer {
-      width: 18px;
-      flex-shrink: 0;
-    }
-
-    .player-info {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      min-width: 0;
-      flex: 1;
-    }
-
-    .player-name {
-      font-weight: 500;
-      color: #333;
-      font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    /* Red text for players who can't drop */
-    .player-name.red {
-      color: #f44336;
-    }
-
-    .warning-icon {
-      cursor: help;
-      margin-left: 2px;
-      font-size: 12px;
-    }
-
-    /* Rejoin count badge */
-    .rejoin-count {
-      font-size: 10px;
-      background: #e3f2fd;
-      color: #1565c0;
-      padding: 1px 4px;
-      border-radius: 3px;
-      margin-left: 4px;
-      cursor: help;
-    }
-
-    .player-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
-    }
-
-    .score {
-      font-weight: 600;
-      color: #667eea;
-      font-size: 13px;
-    }
-
-    /* OUT badge */
-    .out-badge {
-      font-size: 10px;
-      font-weight: 600;
-      color: white;
-      background: #9e9e9e;
-      padding: 2px 6px;
-      border-radius: 3px;
-    }
-
-    .out-score {
-      font-size: 11px;
-      color: #999;
-    }
-
-    /* Rejoin button */
-    .btn-rejoin {
-      width: 24px;
-      height: 24px;
-      border: none;
-      background: #4caf50;
-      color: white;
-      font-size: 12px;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-rejoin:hover {
-      background: #43a047;
-    }
-
-    /* Remove button (X) */
-    .btn-remove {
-      width: 22px;
-      height: 22px;
-      border: none;
-      background: transparent;
-      color: #999;
-      font-size: 16px;
-      cursor: pointer;
-      border-radius: 4px;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .btn-remove:hover {
-      background: #ffebee;
-      color: #f44336;
-    }
-
-    /* Empty state when no players */
-    .empty-state {
-      text-align: center;
-      padding: 20px;
-      color: #666;
-    }
-
-    .empty-state p {
-      margin: 4px 0;
-      font-size: 13px;
-    }
-
-    .hint {
-      font-size: 11px;
-      color: #999;
-    }
-
-    /* Stats footer */
-    .panel-stats {
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid #e0e0e0;
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: #666;
-    }
-
-    .panel-stats p {
-      margin: 0;
+      color: #e53935;
+      font-size: 14px;
+      margin-top: 8px;
     }
 
     /* Confirmation dialog overlay */
@@ -561,31 +248,36 @@ import { PlayerWithTotal } from '../../models/game.model';
 
     .confirm-dialog {
       background: white;
-      padding: 20px;
-      border-radius: 12px;
-      max-width: 300px;
+      padding: 24px;
+      border-radius: 8px;
+      max-width: 320px;
       text-align: center;
     }
 
     .confirm-dialog p {
       margin: 0 0 8px 0;
+      font-size: 16px;
+    }
+
+    .hint {
       font-size: 14px;
+      color: #666;
     }
 
     .confirm-buttons {
       display: flex;
-      gap: 10px;
-      margin-top: 16px;
+      gap: 12px;
+      margin-top: 20px;
     }
 
     .btn-cancel, .btn-confirm {
       flex: 1;
-      padding: 10px;
+      padding: 12px;
       border: none;
-      border-radius: 6px;
-      font-weight: 600;
+      border-radius: 4px;
+      font-weight: 500;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .btn-cancel {
@@ -594,37 +286,37 @@ import { PlayerWithTotal } from '../../models/game.model';
     }
 
     .btn-confirm {
-      background: #f44336;
+      background: #e53935;
       color: white;
     }
 
-    /* Rejoin dialog specific styles */
+    /* Rejoin dialog */
     .rejoin-dialog h4 {
       margin: 0 0 12px 0;
-      font-size: 16px;
+      font-size: 18px;
       color: #333;
     }
 
     .rejoin-info {
       background: #e8f5e9;
-      padding: 10px;
-      border-radius: 6px;
+      padding: 12px;
+      border-radius: 4px;
       margin: 12px 0;
     }
 
     .rejoin-info p {
       margin: 4px 0;
-      font-size: 13px;
+      font-size: 14px;
     }
 
     .btn-rejoin-confirm {
       flex: 1;
-      padding: 10px;
+      padding: 12px;
       border: none;
-      border-radius: 6px;
-      font-weight: 600;
+      border-radius: 4px;
+      font-weight: 500;
       cursor: pointer;
-      font-size: 13px;
+      font-size: 14px;
       background: #4caf50;
       color: white;
     }

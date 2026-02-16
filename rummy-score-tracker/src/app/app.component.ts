@@ -32,7 +32,6 @@ import { GameSetupModalComponent } from './components/game-setup-modal/game-setu
 import { PlayerPanelComponent } from './components/player-panel/player-panel.component';
 import { ScoreTableComponent } from './components/score-table/score-table.component';
 import { InlineScoreEntryComponent } from './components/inline-score-entry/inline-score-entry.component';
-import { DealerIndicatorComponent } from './components/dealer-indicator/dealer-indicator.component';
 import { RoundScore, PlayerWithTotal } from './models/game.model';
 
 @Component({
@@ -43,8 +42,7 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
     GameSetupModalComponent,
     PlayerPanelComponent,
     ScoreTableComponent,
-    InlineScoreEntryComponent,
-    DealerIndicatorComponent
+    InlineScoreEntryComponent
   ],
   template: `
     <!-- 
@@ -69,51 +67,30 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
       
       <!-- 
         HEADER
-        Contains title, game info badges, and action buttons
+        Clean header with title and reset button
       -->
       <header class="app-header">
-        <div class="header-left">
-          <h1>🎴 Rummy Score Tracker</h1>
-          <!-- Game settings badges -->
-          <div class="game-info">
-            <span class="badge">{{ gameService.settings().maxPoints }} pts</span>
-            <span class="badge">Drop: {{ gameService.settings().dropPoints }}</span>
-          </div>
-        </div>
-        
-        <!-- Action buttons -->
-        <div class="header-actions">
-          <button class="btn-secondary" (click)="confirmNewGame()">
-            🔄 New Game
-          </button>
-          <button class="btn-danger" (click)="confirmReset()">
-            🗑️ Reset All
-          </button>
-        </div>
+        <h1>Score App</h1>
+        <button class="btn-reset" (click)="confirmReset()">Reset</button>
       </header>
 
       <!-- 
         MAIN CONTENT AREA
-        Two-column layout: content on left, player panel on right
+        Two-column layout: score area on left, info panel on right
       -->
       <main class="main-content">
         
-        <!-- LEFT/CENTER SECTION -->
+        <!-- LEFT/CENTER SECTION - Score Entry and Table -->
         <div class="content-left">
           
-          <!-- Dealer & Open Card Indicator (ALWAYS VISIBLE) -->
-          <app-dealer-indicator></app-dealer-indicator>
-
-          <!-- Score Table (SCROLLABLE with fixed height) -->
+          <!-- Score Table and Entry Combined -->
           <app-score-table 
             (scoreEdited)="onScoreEdited($event)">
           </app-score-table>
 
           <!-- 
-            INLINE SCORE ENTRY (ALWAYS VISIBLE)
-            Only shown when:
-            - At least 2 active players
-            - Game is not over
+            INLINE SCORE ENTRY
+            Only shown when at least 2 active players and game not over
           -->
           @if (gameService.activePlayers().length >= 2 && !gameService.isGameOver()) {
             <app-inline-score-entry
@@ -123,7 +100,6 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
 
           <!-- 
             Game Over Banner
-            Shown when game ends (only 1 player left)
           -->
           @if (gameService.isGameOver()) {
             <div class="game-over-banner">
@@ -141,8 +117,25 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
           }
         </div>
 
-        <!-- RIGHT SIDEBAR - Player Panel -->
+        <!-- RIGHT SIDEBAR - Info Panel -->
         <aside class="content-right">
+          <!-- Game Info -->
+          <div class="info-panel">
+            <div class="info-item">
+              <span class="info-label">Total Points :</span>
+              <span class="info-value">{{ gameService.settings().maxPoints }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Games :</span>
+              <span class="info-value">{{ gameService.rounds().length }}</span>
+            </div>
+            <div class="info-item">
+              <span class="info-label">Next :</span>
+              <span class="info-value">{{ getNextPlayerName() }}</span>
+            </div>
+          </div>
+
+          <!-- Player Panel -->
           <app-player-panel></app-player-panel>
         </aside>
       </main>
@@ -235,7 +228,7 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
     /* Main app container */
     .app-container {
       min-height: 100vh;
-      background: #f0f2f5;
+      background: #f5f5f5;
     }
 
     /* Blur effect when setup modal is showing */
@@ -245,112 +238,94 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
     }
 
     /* 
-      HEADER STYLES
+      HEADER STYLES - Clean green header
     */
     .app-header {
-      background: white;
-      padding: 12px 20px;
+      background: #4a7c59;
+      padding: 12px 24px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-      position: sticky;
-      top: 0;
-      z-index: 100;
     }
 
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .header-left h1 {
+    .app-header h1 {
       margin: 0;
       font-size: 20px;
-      color: #333;
-    }
-
-    /* Game info badges (max points, drop points) */
-    .game-info {
-      display: flex;
-      gap: 6px;
-    }
-
-    .badge {
-      padding: 4px 10px;
-      background: #667eea;
       color: white;
-      border-radius: 16px;
-      font-size: 12px;
       font-weight: 500;
     }
 
-    /* Header action buttons */
-    .header-actions {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn-secondary, .btn-danger {
-      padding: 8px 14px;
+    .btn-reset {
+      padding: 8px 20px;
+      background: #e53935;
+      color: white;
       border: none;
-      border-radius: 6px;
-      font-size: 13px;
-      font-weight: 600;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
     }
 
-    .btn-secondary {
-      background: #e0e0e0;
-      color: #333;
-    }
-
-    .btn-secondary:hover {
-      background: #d0d0d0;
-    }
-
-    .btn-danger {
-      background: #ffebee;
-      color: #c62828;
-    }
-
-    .btn-danger:hover {
-      background: #ffcdd2;
+    .btn-reset:hover {
+      background: #c62828;
     }
 
     /* 
       MAIN CONTENT LAYOUT
-      Two-column grid: main content (left) + sidebar (right)
     */
     .main-content {
       display: grid;
       grid-template-columns: 1fr 280px;
-      gap: 16px;
-      padding: 16px;
-      max-width: 1400px;
+      gap: 0;
+      padding: 20px;
+      max-width: 1200px;
       margin: 0 auto;
     }
 
     .content-left {
       display: flex;
       flex-direction: column;
-      gap: 16px;
+      gap: 20px;
+      padding-right: 20px;
+      border-right: 1px solid #e0e0e0;
     }
 
-    /* Sidebar - not sticky to keep everything visible */
     .content-right {
-      height: fit-content;
+      padding-left: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Info Panel */
+    .info-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .info-item {
+      display: flex;
+      gap: 8px;
+      font-size: 18px;
+      color: #333;
+    }
+
+    .info-label {
+      font-weight: 400;
+    }
+
+    .info-value {
+      font-weight: 500;
     }
 
     /* Game Over Banner */
     .game-over-banner {
       background: linear-gradient(135deg, #ffd700 0%, #ffb300 100%);
       padding: 24px;
-      border-radius: 12px;
+      border-radius: 8px;
       text-align: center;
-      box-shadow: 0 4px 20px rgba(255, 193, 7, 0.3);
     }
 
     .game-over-banner h2 {
@@ -361,24 +336,33 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
 
     .game-over-banner p {
       margin: 0 0 16px 0;
-      font-size: 16px;
+      font-size: 18px;
       color: #333;
     }
 
     .btn-primary {
       padding: 12px 24px;
-      background: #333;
+      background: #4a7c59;
       color: white;
       border: none;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
+      border-radius: 4px;
+      font-size: 16px;
+      font-weight: 500;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .btn-primary:hover {
-      background: #444;
+      background: #3d6b4a;
+    }
+
+    .btn-danger {
+      background: #e53935;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #c62828;
     }
 
     /* 
@@ -554,36 +538,23 @@ import { RoundScore, PlayerWithTotal } from './models/game.model';
 
     /* 
       RESPONSIVE STYLES
-      Stack layout on smaller screens
     */
     @media (max-width: 900px) {
       .main-content {
         grid-template-columns: 1fr;
+        padding: 16px;
       }
 
-      /* Move sidebar above main content on mobile */
+      .content-left {
+        border-right: none;
+        padding-right: 0;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e0e0e0;
+      }
+
       .content-right {
-        order: -1;
-      }
-
-      .app-header {
-        flex-direction: column;
-        gap: 10px;
-        align-items: stretch;
-      }
-
-      .header-left {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 8px;
-      }
-
-      .header-actions {
-        justify-content: stretch;
-      }
-
-      .header-actions button {
-        flex: 1;
+        padding-left: 0;
+        padding-top: 20px;
       }
     }
   `]
@@ -745,6 +716,14 @@ export class AppComponent {
     
     const player = this.gameService.players().find(p => p.id === winnerId);
     return player ? { name: player.name } : null;
+  }
+
+  /**
+   * Gets the name of the next player to receive open card.
+   */
+  getNextPlayerName(): string {
+    const player = this.gameService.currentOpenCardPlayer();
+    return player ? player.name : '-';
   }
 
   // ==========================================================================
