@@ -1,0 +1,218 @@
+/**
+ * =============================================================================
+ * GLOBAL STYLES - Rummy Score Tracker
+ * =============================================================================
+ * 
+ * This file contains global styles that apply to the entire application.
+ * Component-specific styles are defined in each component's styles array.
+ * 
+ * Contents:
+ * 1. CSS Reset & Base Styles
+ * 2. Typography
+ * 3. Form Elements
+ * 4. Scrollbar Styling
+ * 5. Selection Color
+ * 6. Focus States (Accessibility)
+ * 7. Animations
+ * 8. Utility Classes
+ * 9. Print Styles
+ */
+
+/* =============================================================================
+   1. CSS RESET & BASE STYLES
+   ============================================================================= */
+
+/* Use border-box for all elements (includes padding/border in width) */
+* {
+  box-sizing: border-box;
+}
+
+/* Base HTML and body styles */
+html, body {
+  margin: 0;
+  padding: 0;
+  /* System font stack for best performance and native feel */
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background: #f0f2f5;  /* Light gray background */
+  color: #333;          /* Dark gray text */
+  line-height: 1.5;
+  /* Smooth font rendering */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =============================================================================
+   2. TYPOGRAPHY
+   ============================================================================= */
+
+/* Inherit font family for buttons (browsers don't do this by default) */
+button {
+  font-family: inherit;
+}
+
+/* =============================================================================
+   3. FORM ELEMENTS
+   ============================================================================= */
+
+/* Remove number input spinners (up/down arrows) for cleaner look */
+/* WebKit browsers (Chrome, Safari, Edge) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* =============================================================================
+   4. SCROLLBAR STYLING
+   ============================================================================= */
+
+/* Custom scrollbar for WebKit browsers */
+::-webkit-scrollbar {
+  width: 8px;   /* Vertical scrollbar width */
+  height: 8px;  /* Horizontal scrollbar height */
+}
+
+/* Scrollbar track (background) */
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+/* Scrollbar thumb (draggable part) */
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+/* Scrollbar thumb on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* =============================================================================
+   5. SELECTION COLOR
+   ============================================================================= */
+
+/* Custom text selection color (matches app theme) */
+::selection {
+  background: #667eea;  /* Purple */
+  color: white;
+}
+
+/* =============================================================================
+   6. FOCUS STATES (Accessibility)
+   ============================================================================= */
+
+/* 
+ * Visible focus outline for keyboard navigation
+ * Only shows when using keyboard (not mouse clicks)
+ * Important for accessibility compliance
+ */
+:focus-visible {
+  outline: 2px solid #667eea;
+  outline-offset: 2px;
+}
+
+/* =============================================================================
+   7. ANIMATIONS
+   ============================================================================= */
+
+/* Fade in from above animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Slide in from right animation */
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Pulse/scale animation (for emphasis) */
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+/* =============================================================================
+   8. UTILITY CLASSES
+   ============================================================================= */
+
+/* Apply fade-in animation */
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Apply slide-in animation */
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* 
+ * Toast notification base styles
+ * Used by ConfettiService for winner announcements
+ */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 12px 24px;
+  background: #333;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 10000;
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* =============================================================================
+   9. PRINT STYLES
+   ============================================================================= */
+
+/* 
+ * Styles for printing the score table
+ * Hides unnecessary UI elements and removes shadows
+ */
+@media print {
+  /* Hide header and action buttons */
+  .app-header,
+  .header-actions,
+  .btn-add-score,
+  .content-right {
+    display: none !important;
+  }
+
+  /* Single column layout for print */
+  .main-content {
+    display: block !important;
+  }
+
+  /* Remove shadow from score table */
+  .score-table-container {
+    box-shadow: none !important;
+  }
+}

@@ -1,0 +1,4 @@
+.DS_Store
+rummy-score-tracker/node_modules/
+rummy-score-tracker/dist/
+rummy-score-tracker/.angular/
