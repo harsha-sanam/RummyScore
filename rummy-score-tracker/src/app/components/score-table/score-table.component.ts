@@ -30,6 +30,7 @@ import { PlayerWithTotal, RoundScore } from '../../models/game.model';
 interface ScoreEntry {
   playerId: string;
   score: string;
+  isDropped: boolean;
 }
 
 @Component({
@@ -91,29 +92,8 @@ interface ScoreEntry {
               </tr>
             </thead>
             
-            <!-- TABLE BODY - Score input row + history rows -->
+            <!-- TABLE BODY - History rows + score input row at bottom -->
             <tbody>
-              <!-- SCORE INPUT ROW - Always at top -->
-              @if (!gameService.isGameOver()) {
-                <tr class="input-row">
-                  <td class="round-col"></td>
-                  <td class="scores-cell" [attr.colspan]="gameService.activePlayersWithTotals().length">
-                    <div class="scores-row">
-                      @for (player of gameService.activePlayersWithTotals(); track player.id; let i = $index) {
-                        <div class="score-input-cell">
-                          <input 
-                            type="text"
-                            class="score-entry-input"
-                            [(ngModel)]="scoreEntries()[i].score"
-                            placeholder=""
-                            (keyup.enter)="submitScores()">
-                        </div>
-                      }
-                    </div>
-                  </td>
-                </tr>
-              }
-
               <!-- HISTORY ROWS - Previous rounds -->
               @for (round of gameService.rounds(); track round.id) {
                 <tr class="score-row" [class.editable]="isEditableRound(round.id)">
@@ -146,6 +126,38 @@ interface ScoreEntry {
                               }
                             </span>
                           }
+                        </div>
+                      }
+                    </div>
+                  </td>
+                </tr>
+              }
+
+              <!-- SCORE INPUT ROW - At bottom for adding new round -->
+              @if (!gameService.isGameOver() && gameService.activePlayers().length >= 2) {
+                <tr class="input-row">
+                  <td class="round-col"></td>
+                  <td class="scores-cell" [attr.colspan]="gameService.activePlayersWithTotals().length">
+                    <div class="scores-row">
+                      @for (entry of scoreEntries(); track entry.playerId; let i = $index) {
+                        <div class="score-input-cell">
+                          <input 
+                            type="text"
+                            class="score-entry-input"
+                            [value]="entry.isDropped ? gameService.settings().dropPoints : entry.score"
+                            (input)="onScoreInput(i, $event)"
+                            (keyup.enter)="submitScores()"
+                            [disabled]="entry.isDropped"
+                            [class.dropped]="entry.isDropped"
+                            placeholder="">
+                          <label class="drop-checkbox">
+                            <input 
+                              type="checkbox"
+                              [checked]="entry.isDropped"
+                              (change)="onDropChange(i, $event)"
+                              tabindex="-1">
+                            <span>Drop</span>
+                          </label>
                         </div>
                       }
                     </div>
@@ -211,7 +223,7 @@ interface ScoreEntry {
       regardless of number of rounds
     */
     .table-wrapper {
-      height: 280px;
+      height: 450px;
       overflow-y: auto;
       overflow-x: auto;
       border: 1px solid #e0e0e0;
@@ -235,16 +247,16 @@ interface ScoreEntry {
 
     .header-row th {
       color: white;
-      padding: 10px 8px;
+      padding: 16px 12px;
       text-align: center;
-      font-weight: 600;
+      font-weight: 700;
       white-space: nowrap;
-      font-size: 13px;
+      font-size: 18px;
     }
 
     /* Fixed round number column */
     .round-col {
-      width: 50px;
+      width: 60px;
       background: rgba(0,0,0,0.1);
     }
 
@@ -261,8 +273,8 @@ interface ScoreEntry {
 
     /* Draggable player column headers */
     .player-col-header {
-      min-width: 90px;
-      padding: 10px 8px;
+      min-width: 120px;
+      padding: 16px 12px;
       cursor: grab;
       transition: background 0.2s;
       text-align: center;
@@ -282,13 +294,13 @@ interface ScoreEntry {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     /* Drag handle indicator */
     .drag-handle {
       opacity: 0.6;
-      font-size: 10px;
+      font-size: 14px;
       cursor: grab;
     }
 
@@ -296,16 +308,16 @@ interface ScoreEntry {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 1px;
+      gap: 2px;
     }
 
     .player-name {
       display: flex;
       align-items: center;
-      gap: 2px;
-      font-size: 12px;
+      gap: 4px;
+      font-size: 20px;
       color: white;
-      font-weight: 600;
+      font-weight: 700;
     }
 
     .player-name.red {
@@ -314,8 +326,8 @@ interface ScoreEntry {
 
     /* Total score shown below name */
     .player-total {
-      font-size: 11px;
-      opacity: 0.9;
+      font-size: 18px;
+      opacity: 1;
       font-weight: 500;
       color: white;
     }
@@ -476,8 +488,10 @@ interface ScoreEntry {
       padding: 8px;
       flex: 1;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 4px;
     }
 
     .score-entry-input {
@@ -492,6 +506,33 @@ interface ScoreEntry {
     .score-entry-input:focus {
       outline: none;
       border-color: #667eea;
+    }
+
+    .score-entry-input.dropped {
+      background: #fff3e0;
+      border-color: #ff9800;
+      color: #e65100;
+    }
+
+    .score-entry-input:disabled {
+      cursor: not-allowed;
+    }
+
+    .drop-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: #666;
+      cursor: pointer;
+    }
+
+    .drop-checkbox input {
+      cursor: pointer;
+    }
+
+    .drop-checkbox span {
+      user-select: none;
     }
 
     /* Add Score button section */
@@ -562,11 +603,16 @@ export class ScoreTableComponent implements OnInit, AfterViewChecked {
 
   ngAfterViewChecked(): void {
     const currentRoundCount = this.gameService.rounds().length;
-    if (currentRoundCount > this.lastRoundCount && this.tableWrapper) {
-      this.tableWrapper.nativeElement.scrollTop = this.tableWrapper.nativeElement.scrollHeight;
+    if (currentRoundCount > this.lastRoundCount) {
       this.lastRoundCount = currentRoundCount;
       // Clear entries after round is added
       this.initializeEntries();
+      // Scroll to bottom after a small delay to ensure DOM is updated
+      setTimeout(() => {
+        if (this.tableWrapper) {
+          this.tableWrapper.nativeElement.scrollTop = this.tableWrapper.nativeElement.scrollHeight;
+        }
+      }, 50);
     }
   }
 
@@ -575,10 +621,29 @@ export class ScoreTableComponent implements OnInit, AfterViewChecked {
     this.scoreEntries.set(
       activePlayers.map(p => ({
         playerId: p.id,
-        score: ''
+        score: '',
+        isDropped: false
       }))
     );
     this.lastPlayerCount = activePlayers.length;
+  }
+
+  onScoreInput(index: number, event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const entries = [...this.scoreEntries()];
+    entries[index] = { ...entries[index], score: input.value, isDropped: false };
+    this.scoreEntries.set(entries);
+  }
+
+  onDropChange(index: number, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const entries = [...this.scoreEntries()];
+    entries[index] = { 
+      ...entries[index], 
+      isDropped: checkbox.checked,
+      score: checkbox.checked ? '' : entries[index].score
+    };
+    this.scoreEntries.set(entries);
   }
 
   submitScores(): void {
@@ -586,20 +651,26 @@ export class ScoreTableComponent implements OnInit, AfterViewChecked {
     const activePlayers = this.gameService.activePlayersWithTotals();
     const scores: RoundScore[] = [];
     let winnerCount = 0;
+    const dropPoints = this.gameService.settings().dropPoints;
 
     for (let i = 0; i < entries.length; i++) {
-      const value = entries[i].score.trim();
       let score: number;
       
-      if (value === '' || value === '0') {
-        score = 0;
-        winnerCount++;
+      if (entries[i].isDropped) {
+        // Player dropped - use drop points
+        score = dropPoints;
       } else {
-        score = parseInt(value, 10);
-        if (isNaN(score) || score < 0) {
-          this.editError.set('Please enter valid scores');
-          setTimeout(() => this.editError.set(''), 3000);
-          return;
+        const value = entries[i].score.trim();
+        if (value === '' || value === '0') {
+          score = 0;
+          winnerCount++;
+        } else {
+          score = parseInt(value, 10);
+          if (isNaN(score) || score < 0) {
+            this.editError.set('Please enter valid scores');
+            setTimeout(() => this.editError.set(''), 3000);
+            return;
+          }
         }
       }
       
